@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Bloqueur de pubs",
+  "version": "1.0.0",
+  "description": "Bloque les publicités et les traqueurs courants, et masque les emplacements publicitaires.",
+  "permissions": ["declarativeNetRequest", "declarativeNetRequestFeedback", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "declarative_net_request": {
+    "rule_resources": [
+      { "id": "ads", "enabled": true, "path": "rules.json" }
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "css": ["cosmetic.css"],
+      "js": ["cosmetic.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html", "default_title": "Bloqueur de pubs" }
+}

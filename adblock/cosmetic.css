@@ -1,0 +1,14 @@
+/* Masque les emplacements publicitaires courants */
+ins.adsbygoogle,
+iframe[src*="doubleclick.net"],
+iframe[src*="googlesyndication.com"],
+iframe[id^="google_ads_iframe"],
+div[id^="div-gpt-ad"],
+div[id^="google_ads"],
+[id^="taboola-"], .trc_related_container,
+.OUTBRAIN, [data-widget-id^="AR_"],
+.ad-banner, .ad-container, .ad-slot, .ad-wrapper, .adsbox, .advert, .advertisement,
+[class*="sponsored-content"], [data-ad-slot], [data-ad-unit], [data-google-query-id],
+[aria-label="Publicité"], [aria-label="Advertisement"] {
+  display: none !important;
+}
