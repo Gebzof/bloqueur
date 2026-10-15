@@ -1233,5 +1233,24 @@
     "other"
    ]
   }
+ },
+ {
+  "id": 66,
+  "priority": 1,
+  "action": {
+   "type": "block"
+  },
+  "condition": {
+   "urlFilter": "||edge.ads.twitch.tv^",
+   "resourceTypes": [
+    "script",
+    "image",
+    "sub_frame",
+    "xmlhttprequest",
+    "media",
+    "ping",
+    "other"
+   ]
+  }
  }
 ]

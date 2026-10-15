@@ -1,0 +1,15 @@
+/* Masque les éléments publicitaires de l'interface Twitch */
+[data-a-target="video-ad-label"],
+[data-a-target="video-ad-countdown"],
+[data-a-target="ax-overlay"],
+[data-test-selector="sad-overlay"],
+[data-test-selector="ad-banner-default-text"],
+[data-test-selector="display-ad"],
+.stream-display-ad__wrapper,
+.stream-display-ad,
+.player-ad-notice,
+.video-player__overlay [class*="ad-banner"],
+div[class*="StreamDisplayAd"],
+.home-carousel-ad {
+  display: none !important;
+}
