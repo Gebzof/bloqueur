@@ -66,6 +66,16 @@ Tor permet de choisir le pays de sortie, pas la ville. La connexion est plus len
 | `adblock/popup.html` / `popup.js` | Fenêtre de l'icône |
 | `windows/installer-tor.bat` / `desinstaller-tor.bat` | Installation / désinstallation du service Tor |
 
-## Dépannage Twitch
+## Dépannage
+
+### Twitch
 
 Ouvrir la console (F12) sur Twitch : les messages `[Bloqueur de pubs]` indiquent quand une pub est détectée et comment elle a été traitée. Twitch modifie régulièrement son système publicitaire, le blocage peut donc nécessiter des mises à jour.
+
+### VPN / Tor
+
+Le bouton **Vérifier l'IP** indique si le VPN est réellement appliqué (« VPN actif » ou « Sans VPN »).
+
+- **« Sans VPN » ou IP française avec Tor** : vérifier que l'extension est chargée depuis le dépôt (et non une copie), puis cliquer sur ⟳ dans `chrome://extensions`.
+- **« Une autre extension contrôle le proxy de Chrome »** : désactiver l'autre extension VPN ou proxy.
+- **« VPN désactivé : serveur … injoignable »** : le serveur ne répond pas, l'extension a coupé le VPN pour garder l'accès à Internet. Pour Tor, vérifier que le service tourne : `Get-Service tor` dans PowerShell (état `Running`), et consulter le journal `C:\ProgramData\Tor\tor.log`.
