@@ -3,16 +3,49 @@
 <head>
 <meta charset="utf-8">
 <style>
-  body { font: 14px system-ui, sans-serif; margin: 0; padding: 16px; width: 220px; }
+  body { font: 14px system-ui, sans-serif; margin: 0; padding: 16px; width: 260px; }
   h1 { font-size: 16px; margin: 0 0 12px; }
+  h2 { font-size: 14px; margin: 16px 0 8px; padding-top: 12px; border-top: 1px solid #ddd; }
   label { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
   p { color: #666; font-size: 12px; margin: 12px 0 0; }
+  .field { display: block; margin-top: 8px; font-size: 12px; color: #444; cursor: default; }
+  .field input, .field select { display: block; width: 100%; box-sizing: border-box; margin-top: 2px; padding: 4px 6px; font: inherit; font-size: 13px; }
+  .row { display: flex; gap: 8px; }
+  .row .field:first-child { flex: 0 0 90px; }
+  .row .field:last-child { flex: 1; }
+  .buttons { display: flex; gap: 8px; margin-top: 12px; }
+  button { flex: 1; padding: 6px; font: inherit; cursor: pointer; }
+  #status { margin-top: 8px; font-size: 12px; min-height: 1em; }
+  .ok { color: #1e8449; } .err { color: #c0392b; }
 </style>
 </head>
 <body>
   <h1>Bloqueur de pubs</h1>
   <label>Activé <input type="checkbox" id="on"></label>
   <p>Le chiffre sur l'icône indique les requêtes bloquées sur l'onglet actuel. Rechargez la page après un changement.</p>
+
+  <h2>VPN</h2>
+  <label>VPN activé <input type="checkbox" id="vpn-on"></label>
+  <div class="row">
+    <label class="field">Type
+      <select id="vpn-scheme">
+        <option value="https">HTTPS</option>
+        <option value="http">HTTP</option>
+        <option value="socks5">SOCKS5</option>
+      </select>
+    </label>
+    <label class="field">Port <input id="vpn-port" type="number" min="1" max="65535"></label>
+  </div>
+  <label class="field">Serveur <input id="vpn-host" placeholder="ex. berlin.mon-vpn.com" spellcheck="false"></label>
+  <label class="field">Identifiant <input id="vpn-user" autocomplete="off" spellcheck="false"></label>
+  <label class="field">Mot de passe <input id="vpn-pass" type="password" autocomplete="off"></label>
+  <div class="buttons">
+    <button id="vpn-save">Enregistrer</button>
+    <button id="vpn-tor" title="Service Tor (windows/installer-tor.bat)">Tor</button>
+    <button id="vpn-check">Vérifier l'IP</button>
+  </div>
+  <div id="status"></div>
+  <p>Seul le trafic de Chrome passe par le VPN. SOCKS5 ne prend pas en charge l'identifiant / mot de passe dans Chrome. Pour Tor, lancez d'abord windows/installer-tor.bat.</p>
   <script src="popup.js"></script>
 </body>
 </html>
