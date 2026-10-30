@@ -12,10 +12,19 @@
     const CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko';
     const PLAYER_TYPES = ['embed', 'popout', 'autoplay', 'site'];
     const realFetch = self.fetch.bind(self);
+    const postToPage = self.postMessage.bind(self);
     const headers = {};          // Device-ID, Client-Version… transmis par la page
     const variants = new Map();  // URL playlist média -> { channel, usherUrl, resolution, frameRate }
     const backups = new Map();   // channel|resolution -> { url, playerType }
+    const noBackupUntil = new Map(); // channel|resolution -> date avant laquelle on ne recherche plus de secours
     let adActive = false;
+
+    // Le lecteur rafraîchit sa playlist toutes les ~2 s : une requête trop lente vide le buffer.
+    function fetchTimeout(url, opts, ms = 2500) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), ms);
+      return realFetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+    }
 
     self.addEventListener('message', e => {
       if (e.data && e.data.__nopub === 'headers') {
@@ -57,7 +66,7 @@
       if (headers.deviceId) h['Device-ID'] = headers.deviceId;
       if (headers.clientVersion) h['Client-Version'] = headers.clientVersion;
       if (headers.clientSession) h['Client-Session-Id'] = headers.clientSession;
-      const res = await realFetch('https://gql.twitch.tv/gql', {
+      const res = await fetchTimeout('https://gql.twitch.tv/gql', {
         method: 'POST',
         headers: h,
         body: JSON.stringify({
@@ -77,12 +86,16 @@
       const cached = backups.get(key);
       if (cached) {
         try {
-          const text = await (await realFetch(cached.url)).text();
+          const text = await (await fetchTimeout(cached.url)).text();
           if (!hasAds(text)) return text;
         } catch {}
         backups.delete(key);
       }
+      // Recherche déjà échouée récemment : on ne retarde pas chaque playlist avec de nouvelles tentatives
+      if (Date.now() < (noBackupUntil.get(key) || 0)) return null;
+      const deadline = Date.now() + 4000;
       for (const playerType of PLAYER_TYPES) {
+        if (Date.now() > deadline) break;
         try {
           const token = await getToken(info.channel, playerType);
           if (!token || !token.value) continue;
@@ -90,31 +103,48 @@
           usher.searchParams.set('sig', token.signature);
           usher.searchParams.set('token', token.value);
           usher.searchParams.set('p', String(Math.floor(Math.random() * 1e7)));
-          const masterRes = await realFetch(usher.href);
+          const masterRes = await fetchTimeout(usher.href);
           if (!masterRes.ok) continue;
           const url = pickVariant(await masterRes.text(), info);
           if (!url) continue;
-          const text = await (await realFetch(url)).text();
+          const text = await (await fetchTimeout(url)).text();
           if (!hasAds(text)) {
             backups.set(key, { url, playerType });
+            noBackupUntil.delete(key);
             return text;
           }
         } catch {}
       }
+      noBackupUntil.set(key, Date.now() + 20000);
       return null;
     }
 
     // Retire les segments publicitaires et les marqueurs de pub.
+    // Les segments retirés en tête décalent MEDIA-SEQUENCE, sinon le lecteur confond les numéros de segments.
     function stripAds(text) {
       const lines = text.split('\n');
       const out = [];
+      let removedBeforeLive = 0, seenLive = false;
       for (let i = 0; i < lines.length; i++) {
         const l = lines[i];
-        if (l.startsWith('#EXTINF') && !l.includes(',live')) { i++; continue; } // saute aussi l'URL du segment
+        if (l.startsWith('#EXTINF')) {
+          if (l.includes(',live')) seenLive = true;
+          else {
+            if (!seenLive) removedBeforeLive++;
+            // L'horodatage précédent appartient au segment retiré
+            while (out.length && out[out.length - 1].startsWith('#EXT-X-PROGRAM-DATE-TIME')) out.pop();
+            i++; // saute aussi l'URL du segment
+            continue;
+          }
+        }
         // Garde seulement les DATERANGE techniques (horodatage, session) ; les autres décrivent la pub
         if (l.startsWith('#EXT-X-DATERANGE') && !/CLASS="(timestamp|twitch-session)"/.test(l)) continue;
         if (l.startsWith('#EXT-X-TWITCH-PREFETCH')) continue;
         out.push(l);
+      }
+      if (removedBeforeLive) {
+        const idx = out.findIndex(l => l.startsWith('#EXT-X-MEDIA-SEQUENCE:'));
+        if (idx >= 0) out[idx] = '#EXT-X-MEDIA-SEQUENCE:' + (parseInt(out[idx].split(':')[1], 10) + removedBeforeLive);
       }
       return out.join('\n');
     }
@@ -147,9 +177,14 @@
         adActive = true;
         text = backup || stripAds(text);
       } else {
-        if (adActive) console.info('[Bloqueur de pubs] Fin de la pub, retour au flux normal');
+        if (adActive) {
+          console.info('[Bloqueur de pubs] Fin de la pub, retour au flux normal');
+          // Le lecteur passe d'un flux à l'autre : la page le relance pour éviter qu'il reste figé
+          postToPage({ __nopub: 'adEnded' });
+        }
         adActive = false;
         backups.delete(key);
+        noBackupUntil.delete(key);
       }
       return new Response(text, { status: res.status, statusText: res.statusText, headers: res.headers });
     };
@@ -178,10 +213,56 @@
     }
   }
 
+  // Cherche un composant React du lecteur Twitch (parcours de l'arbre des fibres depuis #root).
+  function findReactInstance(match) {
+    const rootEl = document.querySelector('#root');
+    if (!rootEl) return null;
+    const key = Object.keys(rootEl).find(k => k.startsWith('__reactContainer'));
+    const root = key ? rootEl[key] : rootEl._reactRootContainer && rootEl._reactRootContainer._internalRoot && rootEl._reactRootContainer._internalRoot.current;
+    const stack = [root];
+    for (let n = 0; stack.length && n < 100000; n++) {
+      const fiber = stack.pop();
+      if (!fiber) continue;
+      try { if (fiber.stateNode && match(fiber.stateNode)) return fiber.stateNode; } catch {}
+      stack.push(fiber.sibling, fiber.child);
+    }
+    return null;
+  }
+
+  // Après une pub, le lecteur reste souvent figé sur la jonction entre les deux flux.
+  // On fait d'abord pause/lecture (léger) ; si la vidéo n'avance toujours pas, on recharge le lecteur.
+  let lastRecover = 0;
+  function recoverPlayer() {
+    if (Date.now() - lastRecover < 10000) return;
+    lastRecover = Date.now();
+    const comp = findReactInstance(s => s.props && s.props.mediaPlayerInstance && s.setPlayerActive);
+    const player = comp && comp.props.mediaPlayerInstance;
+    const video = document.querySelector('video');
+    if (!player || !video || video.paused) return;
+    console.info('[Bloqueur de pubs] Relance du lecteur après la pub');
+    player.pause();
+    player.play();
+    const before = video.currentTime;
+    setTimeout(() => {
+      if (video.paused || video.currentTime - before > 1) return;
+      const state = findReactInstance(s => s.setSrc && s.setInitialPlaybackSettings);
+      if (!state) return;
+      console.info('[Bloqueur de pubs] Lecteur toujours figé → rechargement');
+      state.setSrc({ isNewMediaPlayerInstance: true, refreshAccessToken: true });
+    }, 5000);
+  }
+
   class NoPubWorker extends RealWorker {
     constructor(url, opts) {
       super(wrapWorkerUrl(url, opts), opts);
       workers.add(this);
+      // Ajouté avant le onmessage de Twitch : nos messages ne lui parviennent pas
+      this.addEventListener('message', e => {
+        if (e.data && e.data.__nopub === 'adEnded') {
+          e.stopImmediatePropagation();
+          setTimeout(recoverPlayer, 500);
+        }
+      });
       this.postMessage({ __nopub: 'headers', headers: gqlHeaders });
     }
   }

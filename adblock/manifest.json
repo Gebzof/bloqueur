@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bloqueur de pubs",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Bloque les publicités et les traqueurs courants, masque les emplacements publicitaires et inclut un VPN (proxy) configurable.",
   "permissions": [
     "declarativeNetRequest",

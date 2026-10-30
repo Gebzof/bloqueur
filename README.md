@@ -8,7 +8,8 @@ Extension Chrome (Manifest V3) qui bloque les publicités et les traqueurs coura
 - **Nettoyage visuel** : les emplacements publicitaires et les blocs « Sponsorisé » / « Publicité » sont masqués, y compris ceux ajoutés dynamiquement.
 - **Twitch** : les pubs sont intégrées directement dans le flux vidéo, donc impossibles à bloquer par le réseau. L'extension intercepte les playlists du lecteur :
   1. pendant une pub, elle bascule sur un flux de secours sans pub ;
-  2. si aucun flux propre n'est disponible, elle retire les segments publicitaires (l'image reste figée le temps de la pub).
+  2. si aucun flux propre n'est disponible, elle retire les segments publicitaires (l'image reste figée le temps de la pub) ;
+  3. à la fin de la pub, le lecteur est relancé automatiquement (pause/lecture, puis rechargement s'il reste figé) pour éviter que la vidéo bloque au retour sur le flux normal.
 - **VPN** : tout le trafic de Chrome peut passer par un serveur proxy (HTTPS, HTTP ou SOCKS5) configuré dans le popup, avec un bouton pour vérifier l'IP et le pays de sortie.
 - **Compteur** : le nombre de requêtes bloquées sur l'onglet s'affiche sur l'icône.
 
@@ -70,7 +71,7 @@ Tor permet de choisir le pays de sortie, pas la ville. La connexion est plus len
 
 ### Twitch
 
-Ouvrir la console (F12) sur Twitch : les messages `[Bloqueur de pubs]` indiquent quand une pub est détectée et comment elle a été traitée. Twitch modifie régulièrement son système publicitaire, le blocage peut donc nécessiter des mises à jour.
+Ouvrir la console (F12) sur Twitch : les messages `[Bloqueur de pubs]` indiquent quand une pub est détectée, comment elle a été traitée et quand le lecteur est relancé. Si la vidéo saccade pendant une pub, c'est en général que Twitch ne fournit aucun flux de secours propre : l'extension n'en recherche alors plus pendant 20 s pour ne pas ralentir le lecteur. Twitch modifie régulièrement son système publicitaire, le blocage peut donc nécessiter des mises à jour.
 
 ### VPN / Tor
 
